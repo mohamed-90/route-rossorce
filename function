@@ -1,0 +1,263 @@
+****************** save **************************
+if($product->save()){
+            flash(__('Product has been updated successfully'))->success();
+            if(Auth::user()->user_type == 'admin'){
+                return redirect()->route('products.admin');
+            }
+            else{
+                return redirect()->route('seller.products');
+            }
+        }
+        else{
+            flash(__('Something went wrong'))->error();
+            return back();
+        }
+****************************** delet *************************
+ public function destroy($id)
+    {
+        $product = Product::findOrFail($id);
+        if(Product::destroy($id)){
+            foreach (Language::all() as $key => $language) {
+                $data = openJSONFile($language->code);
+                unset($data[$product->name]);
+                saveJSONFile($language->code, $data);
+            }
+            if($product->thumbnail_img != null){
+                //unlink($product->thumbnail_img);
+            }
+            if($product->featured_img != null){
+                //unlink($product->featured_img);
+            }
+            if($product->flash_deal_img != null){
+                //unlink($product->flash_deal_img);
+            }
+            foreach (json_decode($product->photos) as $key => $photo) {
+                //unlink($photo);
+            }
+            flash(__('Product has been deleted successfully'))->success();
+            if(Auth::user()->user_type == 'admin'){
+                return redirect()->route('products.admin');
+            }
+            else{
+                return redirect()->route('seller.products');
+            }
+        }
+        else{
+            flash(__('Something went wrong'))->error();
+            return back();
+        }
+    }
+************************** creat **********************************
+ public function create()
+    {
+        $categories = Category::all();
+        return view('products.create', compact('categories'));
+    }
+************************* save **********************************
+public function reserve(Request $request) {
+        if (Auth::user()) {
+            $id_user = Auth::user()->id;
+            
+            $reservation = new \App\Reservation;
+            $reservation->prenom_client = $request->prenom;
+            $reservation->nom_client = $request->nom;
+            $reservation->id_dactor = $request->id_dactor;
+            $reservation->email = $request->email;
+            $reservation->telephone = $request->telephone;
+            $reservation->date_reserve = $request->date;
+            $reservation->time_reserve = $request->time;
+            $reservation->id_user = $id_user;
+            $reservation->save();
+        } else {
+            $reservation = new \App\Reservation;
+            $reservation->prenom_client = $request->prenom;
+            $reservation->nom_client = $request->nom;
+            $reservation->id_dactor = $request->id_dactor;
+            $reservation->email = $request->email;
+            $reservation->telephone = $request->telephone;
+            $reservation->date_reserve = $request->date;
+            $reservation->time_reserve = $request->time;
+            $reservation->save();
+        }
+    }
+******************************* search ****************************
+public function search_ville($titre, $id_ville) {
+        if ($titre === "touts") {
+            $listItems = \App\Dactor::where('active', '=', 1)
+                            ->where('id_ville', '=', $id_ville)
+                            ->orderBy('premium', 'DESC')->paginate(10);
+        } else {
+            $listItems = \App\Dactor::where('nom', 'like', '%' . $titre . '%')
+                            ->where('adresse', 'like', '%' . $titre . '%')
+                            ->where('active', '=', 1)
+                            ->where('id_ville', '=', $id_ville)
+                            ->orderBy('premium', 'DESC')->paginate(10);
+        }
+        return view('dactor.dactorList', ['dactors' => $listItems]);
+    }
+***************************** search +******************************
+   public function search($titre) {
+        if ($titre === "touts") {
+            $listItems = \App\Dactor::where('active', '=', 1)
+                            ->orderBy('premium', 'DESC')->paginate(10);
+        } else {
+            $listItems = \App\Dactor::where('nom', 'like', '%' . $titre . '%')
+                            ->where('active', '=', 1)
+                            ->orderBy('premium', 'DESC')->paginate(10);
+        }
+        return view('dactor.dactorList', ['dactors' => $listItems]);
+    }
+************************** regester ********************************
+   public function regestDactor(Request $request) {
+        $user = null;
+        $user = \App\User::where('email', '=', $request->email)->first();
+        if ($user === null) {
+            $arr = [
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->telephone,
+                'user' => 1,
+                'password' => $request->password,];
+
+            $data = new rg;
+
+            $user = $data->create($arr);
+            Auth::attempt(['email' => $request->email, 'password' => $request->password]);
+
+            $id_user = Auth::user()->id;
+
+            $dactor = new \App\Dactor;
+            $dactor->nom = $request->name;
+            $dactor->id_user = $id_user;
+            $dactor->id_ville = $request->ville;
+            $dactor->adress = $request->adress;
+            $dactor->telephone_1 = $request->telephone;
+            $dactor->fix = $request->fix;
+            $dactor->email = $request->email;
+            $dactor->id_categore = $request->spesialise;
+            $dactor->description = $request->description;
+            $dactor->save();
+            return view('auth.confirmeRegister');
+        } else {
+            return back()->with('success', 'User déga exist');
+        }
+    }
+******************************* edit ********************************
+public function editDactor(Request $request) {
+
+        if (Auth::user()) {
+            $id_user = Auth::user()->id;
+            $dactor = \App\Dactor::where('id_user', '=', $id_user)->first();
+            $dactor->nom = $request->name;
+            $dactor->id_ville = $request->ville;
+            $dactor->adress = $request->adress;
+            $dactor->telephone_1 = $request->telephone;
+            $dactor->fix = $request->fix;
+
+            if ($request->spesialise) {
+                $dactor->id_categore = $request->spesialise;
+            } else {
+                $dactor->nom_gerant = $request->nom_gerant;
+            }
+
+            $dactor->description = $request->description;
+            $dactor->save();
+
+            $user = \App\User::where('id', '=', $id_user)->first();
+            $user->name = $request->name;
+            $user->save();
+            return redirect()->route('espaceClient');
+        }
+    }
+******************************** all auto *************************
+
+---Route::resource('shiping_state','Shiping_stateController');
+---Route::get('shiping_state/destroy/{id}', 'Shiping_stateController@destroy')->name('shiping_state.destroy');
+
+
+
+
+class StateController extends Controller
+{
+
+    public function index()
+    {
+        $sellers = State::orderBy('created_at', 'desc')->get();
+        return view('state.index', compact('sellers'));
+    }
+
+    public function create()
+    {
+         return view('state.create');
+    }
+
+    public function store(Request $request)
+    {        
+            $state = new State();
+            $state->name = $request->name;
+            $state->description = $request->description;
+            if($request->status)
+            {
+               $state->status=1; 
+            }
+            else
+            {
+                $state->status=0;
+            }           
+            if($state->save()){
+              
+                flash(__('State has been inserted successfully'))->success();
+                return redirect()->route('states.index');
+            }
+            else {
+                    flash(__('Something went wrong'))->error();
+                    return back();
+                }
+    }
+
+    public function show($id)
+    {
+    }
+
+    public function edit($id)
+    {
+       $seller = State::findOrFail(decrypt($id));
+        return view('state.edit', compact('seller'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $seller = State::findOrFail($id);
+        $seller->name = $request->name;
+        $seller->description = $request->description;
+         if($request->status)
+            {
+               $seller->status=1; 
+            }
+            else
+            {
+                $seller->status=0;
+            }
+        
+            if($seller->save()){
+                flash(__('State has been updated successfully'))->success();
+                return redirect()->route('states.index');
+            }
+
+        flash(__('Something went wrong'))->error();
+        return back();
+    }
+
+    public function destroy($id)
+    {
+        $seller = State::findOrFail($id);
+
+        if(State::destroy($id)){
+            flash(__('State has been deleted successfully'))->success();
+            return redirect()->route('states.index');
+        }
+
+        flash(__('Something went wrong'))->error();
+        return back();
+    }
+}
